@@ -1,14 +1,14 @@
-# dsh-select-quote
+# @xb18/dsh-select-quote
 
 [DeepSeek Harness](https://deepseek-harness.github.io/deepseek-harness/guide/quickstart) 的 Web 客户端插件：在对话里**划词加批注**——把选中的原文连同你的评论一起交给模型，并让它在回答里明确指出说的是哪一段。
 
-- **划词工具条**：选中对话区任意文本，浮出「复制 / 添加到任务」；拖拽结束才出现，不挡操作
+- **划词工具条**：选中对话区任意文本，浮出「复制 / 引用 / 添加到任务」；拖拽结束才出现，不挡操作
 - **批注卡片**：添加后输入框内出现一张摘要卡片（可多条），**草稿里不会出现任何协议文本**
 - **正文标记**：被划中的文字在原消息里留下虚线下划线 + 序号角标；点卡片里的条目会滚回那段文字
 - **模型回指**：模型回答时以内联指令标出它处理的每一条批注，插件把这些指令渲染成可点击的 chip
 - **对话记录**：已发送消息里的批注渲染为卡片，用户气泡只剩你打的问题
 
-![screenshot](https://raw.githubusercontent.com/latte03/dsh-select-quote/main/assets/screenshot-1.png)
+![screenshot](https://raw.githubusercontent.com/xb18/dsh-select-quote/main/assets/screenshot-1.png)
 
 <sub>示意图（按产品真实设计 token 渲染，源文件 `assets/screenshot-1.mock.html`）</sub>
 
@@ -29,11 +29,11 @@
 ### 方式一：从 npm 安装（bundle）
 
 ```bash
-dsh plugin --profile web add dsh-select-quote
+dsh plugin --profile web add @xb18/dsh-select-quote
 dsh --profile web
 ```
 
-> ⚠️ npm 上目前只有 `0.1.0`，那是旧版「引用块」行为，不含批注卡片、正文标记与模型回指。要用现在这套，请先用方式二，或从仓库目录安装：`dsh plugin --profile web add <本仓库绝对路径>`。
+> ⚠️ `@xb18/dsh-select-quote` 尚未发布到 npm，方式一现在会直接 404；请先用方式二，或从仓库目录安装：`dsh plugin --profile web add <本仓库绝对路径>`。另外，npm 上的旧名 `dsh-select-quote`（0.1.0 / 0.2.0）是上游早期版本，其中 0.2.0 会让 Web 渲染进程卡死、0.1.0 不含批注卡片、正文标记与模型回指，请勿安装。
 
 ### 方式二：本地 checkout 加载（`--patch`）
 

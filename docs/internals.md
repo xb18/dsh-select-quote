@@ -1,4 +1,4 @@
-# dsh-select-quote 实现说明（维护者向）
+# @xb18/dsh-select-quote 实现说明（维护者向）
 
 面向用户的介绍与安装在 [README](../README.md)。这里记录协议、槽位、以及踩过的坑——改代码前先读这份。
 
@@ -92,7 +92,7 @@ Each item contains text selected from an earlier message ...
 
 - 深色模式用产品自己的 `body[data-ds-dark-theme]`（由 `dsh-client-ui-layout` 挂在 body 上），**不是** `prefers-color-scheme`；
 - 颜色一律用会随主题翻转的 `--dsw-alias-*` / `--dsw-static-*` token，只自己定义 `--dsq-card-fill` / `--dsq-card-hover` 两个填充变量；
-- 样式通过 `ensureToolbarStyles()` 注入一个 `<style data-plugin-css="dsh-select-quote/toolbar.css">`，**改完 CSS 必须刷新页面**（函数只插入一次）。
+- 样式通过 `ensureToolbarStyles()` 注入一个 `<style data-plugin-css="@xb18/dsh-select-quote/toolbar.css">`，**改完 CSS 必须刷新页面**（函数只插入一次）。
 
 ## 目录结构
 
@@ -140,7 +140,7 @@ lib/                               # 构建产物（已提交，运行时直接�
 
 | 现象 | 先查 |
 |---|---|
-| 划词没有工具条 / 卡片不出现 | 跑 `npm run check`；确认页面已刷新；Host 的 boot 图里应包含 `dsh-select-quote`（`/plugins` 路由由 `ctx.clientModules` 提供） |
+| 划词没有工具条 / 卡片不出现 | 跑 `npm run check`；确认页面已刷新；Host 的 boot 图里应包含 `@xb18/dsh-select-quote`（`/plugins` 路由由 `ctx.clientModules` 提供） |
 | 输入框里出现协议原文 | 发送前的注入没生效：确认草稿里存在 U+200B（发送按钮应可用），以及 composer 结构未变（`[data-composer-card]`） |
 | 对话记录里没有卡片 | 该 `user/message` 事件的 `data.content` 是否含批注块；`conversation.chat.node` 的 `select-quote` 单元是否注册 |
 | 带图片的消息在记录里只剩卡片、图片没了 | `UserMessageDisplay` 是否拿到了 `renderMessageImages` |

@@ -809,12 +809,14 @@ body[data-ds-dark-theme] .dsq_annMark {
 }
 `
 
-const TAG_ID = 'dsh-select-quote/toolbar.css'
+const TAG_ID = '@xb18/dsh-select-quote/toolbar.css'
 export function ensureToolbarStyles(): void {
   if (typeof document === 'undefined') return
   if (document.querySelector(`style[data-plugin-css="${TAG_ID}"]`)) return
   const tag = document.createElement('style')
-  tag.dataset.plugin = 'dsh-select-quote'
+  // data-plugin 是 DSH 的样式归属键：client-modules 以 bundle id（= 包名）认领并回收
+  // 本插件注入的 <style>（HMR 记账），因此这里必须与 package.json 的 name 逐字符一致。
+  tag.dataset.plugin = '@xb18/dsh-select-quote'
   tag.dataset.pluginCss = TAG_ID
   tag.textContent = CSS
   document.head.appendChild(tag)

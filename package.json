@@ -1,5 +1,5 @@
 {
-  "name": "dsh-select-quote",
+  "name": "@xb18/dsh-select-quote",
   "version": "0.2.0",
   "description": "DeepSeek Harness web plugin: annotate text selected in the conversation — the selection rides along with your next message, is marked in the source text, and the model points back at it.",
   "keywords": [
@@ -14,11 +14,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/latte03/dsh-select-quote.git"
+    "url": "git+https://github.com/xb18/dsh-select-quote.git"
   },
-  "homepage": "https://github.com/latte03/dsh-select-quote#readme",
+  "homepage": "https://github.com/xb18/dsh-select-quote#readme",
   "bugs": {
-    "url": "https://github.com/latte03/dsh-select-quote/issues"
+    "url": "https://github.com/xb18/dsh-select-quote/issues"
   },
   "type": "module",
   "license": "MIT",
