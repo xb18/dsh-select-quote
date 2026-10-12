@@ -31,7 +31,9 @@ function decorateTextNode(node: Text): void {
     const chip = document.createElement('button')
     chip.type = 'button'
     chip.className = 'dsq_annDirective'
-    chip.dataset[DECO] = String(index)
+    // DECO 含连字符，而 dataset 的命名属性 setter 只接受合法的 Web IDL 标识符
+    // （连字符一律抛 SyntaxError），必须走 setAttribute，否则合法指令也建不出 chip。
+    chip.setAttribute(`data-${DECO}`, String(index))
     chip.setAttribute('data-dsq-deco', 'true')
     chip.textContent = `批注 ${index}`
     chip.addEventListener('click', () => {

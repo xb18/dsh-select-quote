@@ -256,6 +256,17 @@ export function SelectionToolbar({ sessionId }: SelectionToolbarProps): ReactNod
                         '复制',
                       ],
                     }),
+                    // 一键引用：直接走「暂不评论」那条快速提交路径（comment 字段不写入），
+                    // 因此不进入 comment 阶段，也就不会有评论输入弹层与聚焦。
+                    jsx('button', {
+                      type: 'button',
+                      className: styles.button,
+                      onClick: () => commitAnnotation(undefined),
+                      children: [
+                        jsx(LucideIcon, { name: 'quote', size: 14 }),
+                        '引用',
+                      ],
+                    }),
                     jsx('span', { className: styles.divider, 'aria-hidden': true }),
                     jsx('button', {
                       type: 'button',

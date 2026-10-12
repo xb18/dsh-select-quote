@@ -17,13 +17,25 @@ const SVG_ATTRS = {
   focusable: false,
 } as const
 
-export type IconName = 'copy' | 'pencil' | 'trash-2' | 'x' | 'plus'
+export type IconName = 'copy' | 'quote' | 'pencil' | 'trash-2' | 'x' | 'plus'
 
 const SHAPES: Record<IconName, ReactNode> = {
   copy: jsxs('g', {
     children: [
       jsx('rect', { key: 'r', width: 14, height: 14, x: 8, y: 8, rx: 2, ry: 2 }),
       jsx('path', { key: 'p', d: 'M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2' }),
+    ],
+  }),
+  quote: jsxs('g', {
+    children: [
+      jsx('path', {
+        key: 'p1',
+        d: 'M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z',
+      }),
+      jsx('path', {
+        key: 'p2',
+        d: 'M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z',
+      }),
     ],
   }),
   pencil: jsxs('g', {
