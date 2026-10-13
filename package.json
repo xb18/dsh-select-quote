@@ -39,7 +39,8 @@
     "watch": "node scripts/build.mjs --watch",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "verify": "node scripts/verify-bundle.mjs",
-    "check": "npm run typecheck && npm run build && npm run verify"
+    "verify:contrast": "node scripts/verify-contrast.mjs",
+    "check": "npm run typecheck && npm run build && npm run verify && npm run verify:contrast"
   },
   "dsh": {
     "client": {

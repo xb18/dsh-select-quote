@@ -72,8 +72,13 @@ const CSS = `
   transform: translate(-50%, 8px);
   padding: 4px 10px;
   border-radius: 999px;
-  background: var(--dsw-alias-bg-layer-3, rgba(0, 0, 0, 0.78));
-  color: var(--dsw-alias-label-primary-inverted, #fff);
+  /* 必须用 toast 语义 token，不能用 bg-layer-3 + label-primary-inverted 这对：
+     在 DSH 真实主题里两者恰好同值（亮色都是 #fff、暗色都是 #353638），文字与
+     底色完全同色 = 只剩下一个看不见的空白圆角块。官方 toast 表面在两种主题下
+     都是深色（亮 bluish-800 / 暗 bluish-750）、标签固定白色，故对比度充足。
+     备选值保持「深底白字」，即使 token 未定义也不影响可读。 */
+  background: var(--dsw-alias-toast-bg, rgba(0, 0, 0, 0.78));
+  color: var(--dsw-alias-toast-label, #fff);
   font-size: 12px;
   line-height: 18px;
   pointer-events: none;
@@ -241,8 +246,10 @@ const CSS = `
   max-width: min(560px, calc(100vw - 48px));
   padding: 8px 14px;
   border-radius: 999px;
-  background: var(--dsw-alias-bg-layer-3, rgba(0, 0, 0, 0.78));
-  color: var(--dsw-alias-label-primary-inverted, #fff);
+  /* 与 .dsq_status 同一对 toast 语义 token：理由见该规则处的注释
+     （bg-layer-3 与 label-primary-inverted 在真实主题下同值，会白底白字）。 */
+  background: var(--dsw-alias-toast-bg, rgba(0, 0, 0, 0.78));
+  color: var(--dsw-alias-toast-label, #fff);
   font-size: 12px;
   line-height: 18px;
   text-align: center;
