@@ -8,7 +8,7 @@
 npm run typecheck   # tsc --noEmit，应无输出
 npm run build       # 产出 lib/index.js 与 lib/client.js
 npm run watch       # 增量重建
-npm run verify      # 无头执行 lib/client.js，断言 6 项贡献都注册上了
+npm run verify      # 无头执行 lib/client.js，断言 8 项贡献都注册上了
 npm run check       # typecheck + build + verify（提交前跑这个）
 ```
 
@@ -41,14 +41,50 @@ Each item contains text selected from an earlier message ...
 
 旧版把引用写成 Markdown 引用块。现在**不再写入**，只在 `quote-protocol.ts` 里保留读取与剥离能力（`parseQuoteMessage()` / `displayTextWithoutQuote()`），用于渲染历史消息。新消息一律走上面的 JSON 块。
 
-## 客户端贡献（共 6 项）
+### 笔记（与批注完全独立的一条线）
+
+笔记不是批注的一种，两者数据、存储、生命周期都不同，改动时不要互相牵连：
+
+| | 批注 | 笔记 |
+|---|---|---|
+| 归属键 | 草稿（`pending`，单 composer 共享） | `sessionId`（来自 `SessionBridge`） |
+| 存放 | 内存 Map，随消息发送后消失 | 宿主文件 `$DSH_HOME/select-quote/notes.json` |
+| 内容 | 选区原文 + 用户评论 | **只有选区原文**，无评论/标题 |
+| 通道 | 折进消息正文（JSON 块） | HTTP `/api/select-quote-notes`（GET/POST/DELETE） |
+| 入口 | 批注卡片、正文标记、模型回指 chip | 工具条「笔记」按钮、会话「笔记」标签页、设置页「笔记」节 |
+
+宿主半契约（`src/host/index.ts` + `src/host/notes-store.ts`）：
+
+- 磁盘字段**恰为** `createdAt / endOffset / id / messageId / sessionId / startOffset / text`；
+  多写一个 `comment` 之类的字段就是契约漂移；
+- 写入是「同目录临时文件 + rename」的原子写，并发 POST 各自独立成条、id 不重复；
+- 损坏的 JSON 返回 500 且**不清空**文件（宁可报错也不要静默丢用户数据）；
+- 响应一律带 `cache-control: no-store`（覆盖 200/201/400/404/413 全部分支）；
+- 落盘位置取 `$DSH_HOME`（去空后非空优先），回退 `~/.dsh`；这个目录**永远不要**在
+  回滚/卸载流程里顺手删掉 —— 那是用户数据。
+
+定位（`src/client/dom/locateNote.ts` + `src/client/notes/locate-queue.ts`）：
+
+- 顺序固定为「精确锚点 `[data-chat-flow-key]` → 消息内字符偏移 → 全文档文本兜底」；
+- 平台**没有**「按 messageId 加载历史消息」的公开 API，所以等不到就必须在
+  `DEFAULT_LOCATE_TIMEOUT_MS`（6 s）后明确报「无法定位」，绝不无限等；
+- 文本兜底必须排除笔记界面自身（`TEXT_SKIP`：会话笔记页、设置笔记页、定位提示），
+  否则「找不到正文」会变成「滚到自己的列表项」并谎报成功；
+- 「等待挂载 + 高亮」放在模块作用域的 `locate-queue`，不能放进视图组件：
+  `conversation.view` 带 `{ only: viewId }`，切视图会让笔记视图自身卸载。
+
+## 客户端贡献（共 8 项）
 
 | 位置 | 类型 | 说明 |
 |---|---|---|
 | `shell.overlay` | list slot | `select-quote-toolbar`（order 100）：划词工具条 + 评论气泡。挂 root 级，切会话/看历史都不会失去观察 |
 | `conversation.input.overlay` | list slot | `select-quote-card`（order 20）：输入框内的批注摘要；`select-quote-session-bridge`（order 1）：只负责把 `sessionId` 发布给 root 工具条 |
 | `conversation.chat.node` | keyed slot | `select-quote`：对话记录里的批注摘要卡片；`user`（`priority: -10`）：替换内置用户气泡 |
+| `conversation.view` | list slot | `notes`（order 30）：会话内「笔记」标签页。**必须是全新 id 且用 `id` 而非 `key`**——`chat`/`trajectory` 已被内置占用，复用会撞车 |
+| `settings.section` | list slot | `select-quote-notes`（order 55）：设置面板里的全局笔记页（跨会话列表 + 搜索） |
 | Conversation Definition | `uiConversation.events.register` | `select-quote`：把含批注块的 `user/message` 变成一个 Chat 节点 |
+
+注意 `label` 必须是返回非空字符串的 thunk（内置渲染会直接调用它）；`order` 必须是数字。`scripts/verify-bundle.mjs` 对这几点都有结构性断言。
 
 ## 关键机制
 
@@ -97,9 +133,18 @@ Each item contains text selected from an earlier message ...
 ## 目录结构
 
 ```
-src/index.ts                       # Node 半：占位，让包被 Loader 挂载
+src/host/index.ts                   # Node 半入口：注册 /api/select-quote-notes 路由
+src/host/notes-store.ts             # 笔记落盘（按会话存 $DSH_HOME/select-quote/notes.json，原子写）
+src/host/context.d.ts               # Node 半的 Context 类型补充
 src/client/index.tsx               # Client 半入口：注册 Slot、Conversation Definition 与装饰观察者
-src/client/SelectionToolbar.tsx    # 划词浮动条（复制 / 添加到任务）+ 评论气泡
+src/client/SelectionToolbar.tsx    # 划词浮动条（复制 / 引用 / 笔记 / 添加到任务）+ 评论气泡
+src/client/notes/NotesView.tsx      # 会话内「笔记」标签页
+src/client/notes/locate-queue.ts    # 跨视图卸载的定位管线（MutationObserver + 代际守卫）
+src/client/notes/notes-common.tsx   # 会话笔记页与设置页共用（排序/过滤/错误边界）
+src/client/notes/session-lookup.ts  # 会话展示名解析与「会话不存在」判定
+src/client/settings/NotesSettings.tsx # 设置面板全局笔记页（跨会话搜索）
+src/client/dom/locateNote.ts        # 笔记定位（精确锚点 → 消息内偏移 → 全文档文本兜底）
+src/client/services.ts              # 暴露 uiWorkspace 等宿主服务的取用口
 src/client/composer/AnnotationPanel.tsx      # 输入框内批注摘要 + 发送动作拦截
 src/client/composer/useSendIntercept.ts      # 发送手势时把待发批注折进草稿
 src/client/composer/useDraftMarker.ts        # U+200B 让"只有批注"时发送按钮可用
@@ -117,12 +162,13 @@ src/client/transcript/TranscriptQuoteCard.tsx # 对话记录里的批注摘要
 src/client/transcript/UserMessageDisplay.tsx  # 替换用户气泡（隐藏协议块、保留图片）
 src/client/transcript/transcript-node.ts      # select-quote Conversation Definition
 src/client/ui/AnnotationCardView.tsx  # 批注卡片与悬停列表面板（portal 到 body、内联编辑）
-src/client/ui/icons.tsx               # 内联 lucide 图标（pencil / trash / x / copy / plus）
+src/client/ui/icons.tsx               # 内联 lucide 图标（pencil / trash / x / copy / quote / notebook-pen / plus）
 src/client/styles.ts               # 全部 CSS（模板字符串注入）
 src/client/runtime.ts              # 跨 slot 的运行时共享（sessionId）
 src/client/context.d.ts            # 客户端 Context 服务的类型补充
-scripts/build.mjs                  # tsdown 构建 + ModuleLoader 包装
-scripts/verify-bundle.mjs          # 无头 bundle 校验（EXPECTED = 上面 6 项）
+scripts/build.mjs                  # tsdown 构建 + ModuleLoader 包装（客户端与宿主半各打一次）
+scripts/tsdown.host.config.mjs     # 宿主半打包配置（ESM / node；必须与客户端配置分开）
+scripts/verify-bundle.mjs          # 无头 bundle 校验（EXPECTED = 上面 8 项）
 cordis.patch.yml                   # bundle 加载层（按包名，随 npm 包发布）
 dev.patch.yml                      # 本地 --patch 开发层（绝对路径，不发布）
 lib/                               # 构建产物（已提交，运行时直接读它）
@@ -133,7 +179,9 @@ lib/                               # 构建产物（已提交，运行时直接�
 - `[data-composer-card]` 属性存在，且主发送按钮是卡片内 DOM 顺序上最后一个 `button`；停止按钮渲染 `svg rect`；
 - `user/message` 事件的内容在 `data.content`（不是 `data.message.content`）；
 - 深色属性 `data-ds-dark-theme` 由 `dsh-client-ui-layout` 挂在 `body`；
-- 槽位名 `shell.overlay` / `conversation.input.overlay` / `conversation.chat.node` 及其 props（`useInput`、`inputActions.setDraft`）；
+- 槽位名 `shell.overlay` / `conversation.input.overlay` / `conversation.chat.node` / `conversation.view` / `settings.section` 及其 props（`useInput`、`inputActions.setDraft`）；
+- `conversation.view` 带 `{ only: viewId }` 语义：切视图会让视图组件自身卸载，因此「等挂载再高亮」不能写在组件里（见 `notes/locate-queue.ts`）；
+- 样式归属键 `style[data-plugin=<id>]` 的 `<id>` 必须逐字符等于 bundle id（即包名），否则 `claimStyles` 认领不到、也回收不掉。
 - 类名 `.nyYjTG_file`、`.I17U7q_follow` 只是几何与层叠参照，产品改版不影响功能，但会影响观感。
 
 ## 排错
@@ -145,4 +193,6 @@ lib/                               # 构建产物（已提交，运行时直接�
 | 对话记录里没有卡片 | 该 `user/message` 事件的 `data.content` 是否含批注块；`conversation.chat.node` 的 `select-quote` 单元是否注册 |
 | 带图片的消息在记录里只剩卡片、图片没了 | `UserMessageDisplay` 是否拿到了 `renderMessageImages` |
 | 改了 CSS 不生效 | `<style>` 只注入一次，刷新页面 |
+| 笔记点了没反应 / 标签页空 | 宿主半是否加载（`lib/index.js` 应导出 `name`/`apply` 并注册 `/api/select-quote-notes`）；笔记文件在 `$DSH_HOME/select-quote/notes.json`，坏 JSON 会返回 500 而不清空 |
+| 点笔记后没定位却提示成功 | `dom/locateNote.ts` 的 `TEXT_SKIP` 是否漏排了包含该文本的界面自身（笔记列表、设置页） |
 | 按 Backspace 删不掉 / 中文输入被打断 | 检查是否有代码在响应草稿变化时调用 `setDraft()`（见关键机制 2） |

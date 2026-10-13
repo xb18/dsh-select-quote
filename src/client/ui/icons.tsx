@@ -17,7 +17,14 @@ const SVG_ATTRS = {
   focusable: false,
 } as const
 
-export type IconName = 'copy' | 'quote' | 'pencil' | 'trash-2' | 'x' | 'plus'
+export type IconName =
+  | 'copy'
+  | 'quote'
+  | 'notebook-pen'
+  | 'pencil'
+  | 'trash-2'
+  | 'x'
+  | 'plus'
 
 const SHAPES: Record<IconName, ReactNode> = {
   copy: jsxs('g', {
@@ -35,6 +42,22 @@ const SHAPES: Record<IconName, ReactNode> = {
       jsx('path', {
         key: 'p2',
         d: 'M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z',
+      }),
+    ],
+  }),
+  'notebook-pen': jsxs('g', {
+    children: [
+      jsx('path', {
+        key: 'p1',
+        d: 'M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4',
+      }),
+      jsx('path', { key: 'p2', d: 'M2 6h4' }),
+      jsx('path', { key: 'p3', d: 'M2 10h4' }),
+      jsx('path', { key: 'p4', d: 'M2 14h4' }),
+      jsx('path', { key: 'p5', d: 'M2 18h4' }),
+      jsx('path', {
+        key: 'p6',
+        d: 'M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z',
       }),
     ],
   }),

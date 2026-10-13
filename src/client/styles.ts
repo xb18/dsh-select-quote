@@ -80,6 +80,246 @@ const CSS = `
   white-space: nowrap;
 }
 
+/* 「笔记」会话视图（conversation.view 槽位条目）。
+   该槽位是 full-bleed 视图区：自带滚动容器，不要依赖外层 padding。 */
+.dsq_notesView {
+  height: 100%;
+  overflow-y: auto;
+  padding: 16px 20px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--dsw-alias-label-primary, rgba(0, 0, 0, 0.88));
+}
+
+.dsq_notesHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dsq_notesCount {
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary, rgba(0, 0, 0, 0.6));
+}
+
+.dsq_notesEmpty {
+  margin-top: 24px;
+  padding: 24px 16px;
+  border-radius: 10px;
+  text-align: center;
+  color: var(--dsw-alias-label-secondary, rgba(0, 0, 0, 0.6));
+  background: var(--dsw-alias-bg-layer-1, rgba(0, 0, 0, 0.02));
+}
+
+.dsq_notesEmptyTitle {
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: var(--dsw-alias-label-primary, rgba(0, 0, 0, 0.88));
+}
+
+.dsq_notesEmptyHint {
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.dsq_notesList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dsq_noteRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1, rgba(0, 0, 0, 0.02));
+  box-shadow: inset 0 0 0 1px var(--dsw-alias-border-l2, rgba(0, 0, 0, 0.06));
+}
+
+.dsq_noteRow:hover {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.05));
+}
+
+/* 主体是可点击定位区：整块命中比只点文字舒服。 */
+.dsq_noteMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 6px;
+}
+
+.dsq_noteMain:focus-visible {
+  outline: 2px solid var(--dsw-alias-button-primary-fill, #1677ff);
+  outline-offset: 2px;
+}
+
+.dsq_noteText {
+  font-size: 13px;
+  line-height: 20px;
+  /* 长选区原文可能很长：限制行数，保持列表可扫读。 */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.dsq_noteMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary, rgba(0, 0, 0, 0.55));
+}
+
+.dsq_noteDelete {
+  flex: none;
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, rgba(0, 0, 0, 0.6));
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dsq_noteDelete:hover {
+  color: var(--dsw-alias-label-primary, rgba(0, 0, 0, 0.88));
+  background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.06));
+}
+
+.dsq_noteDelete:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* 视图级提示（定位失败、删除失败等）。 */
+.dsq_notesNotice {
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 18px;
+  background: var(--dsw-alias-bg-layer-2, rgba(0, 0, 0, 0.04));
+  color: var(--dsw-alias-label-primary, rgba(0, 0, 0, 0.88));
+}
+
+.dsq_notesError {
+  color: var(--dsw-alias-label-error, #d4380d);
+  background: var(--dsw-alias-bg-error, rgba(212, 56, 13, 0.08));
+}
+
+/* 定位结果浮层：跳转可能已经把笔记视图卸载掉，提示必须挂在 body 上才可靠。 */
+.dsq_notesToast {
+  position: fixed;
+  z-index: 10062;
+  left: 50%;
+  bottom: 96px;
+  transform: translateX(-50%);
+  max-width: min(560px, calc(100vw - 48px));
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-3, rgba(0, 0, 0, 0.78));
+  color: var(--dsw-alias-label-primary-inverted, #fff);
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* 设置面板的全局「笔记」页（settings.section 槽位条目）。
+   宿主把该槽位渲染进 .options（已自带 padding 与滚动），所以这里不再嵌套第二层滚动容器。 */
+.dsq_settingsNotes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--dsw-alias-label-primary, rgba(0, 0, 0, 0.88));
+}
+
+.dsq_settingsScope {
+  flex: none;
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary, rgba(0, 0, 0, 0.6));
+}
+
+.dsq_settingsSearch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dsq_settingsInput {
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1, rgba(0, 0, 0, 0.04));
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+}
+
+.dsq_settingsInput:focus-visible {
+  outline: 2px solid var(--dsw-alias-button-primary-fill, #1677ff);
+  outline-offset: 1px;
+}
+
+.dsq_settingsClear {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary, rgba(0, 0, 0, 0.6));
+  cursor: pointer;
+}
+
+.dsq_settingsClear:hover {
+  background: var(--dsw-alias-interactive-bg-hover, rgba(0, 0, 0, 0.05));
+}
+
+/* 跨会话列表里必须能一眼看出这条笔记来自哪个会话，否则整列无法解读。 */
+.dsq_settingsSession {
+  color: var(--dsw-alias-label-primary, rgba(0, 0, 0, 0.88));
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.dsq_settingsMissing {
+  color: var(--dsw-alias-label-error, #d4380d);
+}
+
 /* Annotation stack — inside the composer card (input.overlay), ~1/5 width. */
 .dsq_cardStack {
   position: absolute;
@@ -863,6 +1103,28 @@ export const styles = {
   annAnchor: 'dsq_annAnchor',
   annMark: 'dsq_annMark',
   annMarkFlash: 'dsq_annMarkFlash',
+  notesView: 'dsq_notesView',
+  notesHead: 'dsq_notesHead',
+  notesCount: 'dsq_notesCount',
+  notesEmpty: 'dsq_notesEmpty',
+  notesEmptyTitle: 'dsq_notesEmptyTitle',
+  notesEmptyHint: 'dsq_notesEmptyHint',
+  notesList: 'dsq_notesList',
+  noteRow: 'dsq_noteRow',
+  noteMain: 'dsq_noteMain',
+  noteText: 'dsq_noteText',
+  noteMeta: 'dsq_noteMeta',
+  noteDelete: 'dsq_noteDelete',
+  notesNotice: 'dsq_notesNotice',
+  notesError: 'dsq_notesError',
+  notesToast: 'dsq_notesToast',
+  settingsNotes: 'dsq_settingsNotes',
+  settingsScope: 'dsq_settingsScope',
+  settingsSearch: 'dsq_settingsSearch',
+  settingsInput: 'dsq_settingsInput',
+  settingsClear: 'dsq_settingsClear',
+  settingsSession: 'dsq_settingsSession',
+  settingsMissing: 'dsq_settingsMissing',
   commentPop: 'dsq_commentPop',
   commentInput: 'dsq_commentInput',
   commentActions: 'dsq_commentActions',

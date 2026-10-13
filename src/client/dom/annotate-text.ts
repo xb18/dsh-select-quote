@@ -26,6 +26,12 @@ export interface AnnotationJob {
   readonly text: string
   readonly startOffset?: number
   readonly endOffset?: number
+  /**
+   * False 时不写 `data-dsq-ann-index`，因而不显示序号徽标。笔记定位复用了本
+   * 机制来标出文本区间，但笔记不在批注编号体系内，挂个「1」会误导用户以为
+   * 它是第 1 条批注。
+   */
+  readonly showIndex?: boolean
 }
 
 const jobs = new Map<string, AnnotationJob>()
@@ -67,7 +73,7 @@ function createMark(job: AnnotationJob, withIndex: boolean): HTMLSpanElement {
   mark.className = styles.annMark
   mark.setAttribute(MARK_ATTR, job.markId)
   // Only the last fragment carries the ordinal, so the corner badge shows once.
-  if (withIndex) mark.setAttribute(INDEX_ATTR, String(job.index))
+  if (withIndex && job.showIndex !== false) mark.setAttribute(INDEX_ATTR, String(job.index))
   return mark
 }
 
@@ -88,13 +94,22 @@ function wrapRange(item: HTMLElement, job: AnnotationJob, from: number, to: numb
     const node = piece.entry.node
     const parent = node.parentElement
     if (!parent) return
-    const range = document.createRange()
-    range.setStart(node, piece.start - piece.entry.start)
-    range.setEnd(node, piece.end - piece.entry.start)
+    // 必须在提取之前把选区起点从原文本节点切开。
+    // `Range.extractContents()` 对「起止落在同一个文本节点内」的选区走的是
+    // replaceData 分支：把中间那段删掉、前后两段**合并留在同一节点**，并不会
+    // 像跨节点选区那样把节点一分为二。若直接把标记插在 node 之后，当 node 恰好
+    // 是该父节点的最后一个子节点时标记会被追加到末尾，正文文字顺序当场错乱
+    // （表现为被标注的那段话跑到消息末尾）。先 splitText 让选区自成节点起点，
+    // 标记才能落在真正的位置上。
+    const fromInNode = piece.start - piece.entry.start
+    const target = fromInNode === 0 ? node : node.splitText(fromInNode)
     const mark = createMark(job, i === pieces.length - 1)
+    parent.insertBefore(mark, target)
+    const range = document.createRange()
+    range.setStart(target, 0)
+    range.setEnd(target, piece.end - piece.start)
     mark.append(range.extractContents())
-    parent.insertBefore(mark, node.nextSibling)
-    if (node.nodeValue === '') node.remove()
+    if (target.nodeValue === '') target.remove()
     wrapped = true
   })
   return wrapped
@@ -171,7 +186,8 @@ export function upsertAnnotationJobs(next: readonly AnnotationJob[]): void {
       prev.index === job.index &&
       prev.text === job.text &&
       prev.startOffset === job.startOffset &&
-      prev.endOffset === job.endOffset
+      prev.endOffset === job.endOffset &&
+      prev.showIndex === job.showIndex
     ) {
       continue
     }
@@ -286,4 +302,16 @@ export function flashAnnotationMark(mark: HTMLElement): void {
   mark.scrollIntoView({ block: 'center', behavior: 'smooth' })
   mark.classList.add(styles.annMarkFlash)
   window.setTimeout(() => mark.classList.remove(styles.annMarkFlash), FLASH_MS)
+}
+
+/**
+ * Mark carrying exactly `markId`.
+ *
+ * 与 findAnnotationMark 的区别：这里**不做**序号回退。findAnnotationMark 在
+ * markId 未命中时会退化为「按 index 找第一个」，笔记复用它就会错误地命中编号
+ * 为 1 的批注徽标 —— 笔记根本不在编号体系里，必须严格按 markId 命中。
+ */
+export function findAnnotationMarkById(markId: string): HTMLElement | null {
+  const node = document.querySelector(`[${MARK_ATTR}="${attrValue(markId)}"]`)
+  return node instanceof HTMLElement ? node : null
 }

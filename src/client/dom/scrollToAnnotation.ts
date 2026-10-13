@@ -17,9 +17,30 @@ export function scrollToAnnotation(index: number, text: string, markId?: string)
   }
 }
 
-function findElementByText(text: string): HTMLElement | null {
+/**
+ * Containers whose text is never a legitimate locate target.
+ *
+ * `script`/`style`/`noscript`/`template` contents are text nodes in the
+ * document but are not rendered: a hit there scrolls nowhere useful and, worse,
+ * reports success. A page that inlines code containing the searched string
+ * (the plugin bundle itself, a test harness) would otherwise always "match".
+ */
+const NON_RENDERED = 'script, style, noscript, template'
+
+/**
+ * DOM node holding `text`: a TreeWalker over text nodes, scoring the deepest
+ * reasonably small block highest. Exported so other locators (notes) share one
+ * implementation instead of keeping near-identical private copies in sync.
+ *
+ * `extraSkip` lets a caller exclude its own chrome (a list of nodes that also
+ * render the note text) from being mistaken for the conversation body.
+ */
+export function findElementByText(text: string, extraSkip?: string): HTMLElement | null {
   const needle = text.trim().slice(0, 32)
   if (needle.length < 2) return null
+  const skip = `[data-dsq-toolbar], [data-selection-annotation-summary], ${NON_RENDERED}${
+    extraSkip ? `, ${extraSkip}` : ''
+  }`
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
   let best: HTMLElement | null = null
   let bestScore = 0
@@ -28,7 +49,7 @@ function findElementByText(text: string): HTMLElement | null {
     const value = node.textContent ?? ''
     if (!value.includes(needle)) continue
     const el = node.parentElement
-    if (!el || el.closest('[data-dsq-toolbar], [data-selection-annotation-summary]')) continue
+    if (!el || el.closest(skip)) continue
     // Prefer the deepest reasonably sized block.
     const score = value.length < 500 ? 2 : 1
     if (score > bestScore) {

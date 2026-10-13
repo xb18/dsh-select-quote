@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { spawnSync } from 'node:child_process'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -9,13 +9,8 @@ const pkg = JSON.parse(readFileSync(resolve(root, 'package.json'), 'utf8'))
 
 mkdirSync(libDir, { recursive: true })
 
-// Minimal Node entry (no bundling needed).
-writeFileSync(
-  resolve(libDir, 'index.js'),
-  `export const name = ${JSON.stringify(pkg.name)}\nexport function apply() {}\n`,
-)
-
 const buildDir = resolve(libDir, '.client-build')
+const hostBuildDir = resolve(libDir, '.host-build')
 
 // Resolve tsdown's JS entry and run it with the current Node binary.
 //
@@ -50,31 +45,35 @@ function resolveTsdownEntry() {
   return entry
 }
 
-const result = spawnSync(
-  process.execPath,
-  [
-    resolveTsdownEntry(),
-    resolve(root, 'src/client/index.tsx'),
-    '--config',
-    resolve(root, 'tsdown.config.ts'),
-    '--out-dir',
-    buildDir,
-  ],
-  {
+/**
+ * Run tsdown with the current Node binary and fail loudly on any non-zero exit.
+ *
+ * `stdio: 'inherit'` keeps the child's output visible, which also means a failed
+ * child prints its own diagnostics; the explicit exit-code check is what makes
+ * the failure propagate to this script's caller.
+ */
+function runTsdown(args) {
+  const result = spawnSync(process.execPath, [resolveTsdownEntry(), ...args], {
     cwd: root,
     stdio: 'inherit',
     env: process.env,
-  },
-)
-
-if (result.error) {
-  console.error('[dsh-select-quote] failed to start tsdown:', result.error)
-  process.exit(1)
+  })
+  if (result.error) {
+    console.error('[dsh-select-quote] failed to start tsdown:', result.error)
+    process.exit(1)
+  }
+  if (result.status !== 0) {
+    process.exit(result.status ?? 1)
+  }
 }
 
-if (result.status !== 0) {
-  process.exit(result.status ?? 1)
-}
+runTsdown([
+  resolve(root, 'src/client/index.tsx'),
+  '--config',
+  resolve(root, 'tsdown.config.ts'),
+  '--out-dir',
+  buildDir,
+])
 
 const rawCandidates = ['index.js', 'index.cjs']
 let rawPath = null
@@ -111,3 +110,59 @@ ${raw}
 writeFileSync(resolve(libDir, 'client.js'), wrapped)
 rmSync(buildDir, { recursive: true, force: true })
 console.log(`[dsh-select-quote] wrote ${resolve(libDir, 'client.js')}`)
+
+// Host half. Compiled, not hand-written: the Node side owns the notes store, so
+// it has real code to bundle. Emitted as plain ESM (`"type": "module"`), which is
+// what the loader imports.
+runTsdown([
+  '--config',
+  resolve(root, 'scripts/tsdown.host.config.mjs'),
+  '--out-dir',
+  hostBuildDir,
+])
+
+const hostCandidates = ['index.js', 'index.mjs']
+let hostPath = null
+for (const name of hostCandidates) {
+  const candidate = resolve(hostBuildDir, name)
+  try {
+    readFileSync(candidate)
+    hostPath = candidate
+    break
+  } catch {
+    // try next
+  }
+}
+if (!hostPath) {
+  console.error('[dsh-select-quote] host output not found in', hostBuildDir)
+  process.exit(1)
+}
+
+const hostCode = readFileSync(hostPath, 'utf8')
+
+// The loader mounts the host half by the name it exports, so a rename that
+// misses one of package.json / the source / cordis.patch.yml would silently
+// mount the plugin under a name the profile does not know. Import the artifact
+// and inspect it rather than pattern-matching the text: the bundler is free to
+// emit `export const name = ...` or a hoisted `export { apply, name }`, and only
+// the imported value is the real contract.
+const hostModule = await import(pathToFileURL(hostPath).href)
+if (hostModule.name !== pkg.name) {
+  console.error(
+    `[dsh-select-quote] host half exports the wrong name.\n` +
+      `  expected: ${JSON.stringify(pkg.name)}\n` +
+      `  actual:   ${JSON.stringify(hostModule.name)}`,
+  )
+  process.exit(1)
+}
+if (typeof hostModule.apply !== 'function') {
+  console.error(
+    `[dsh-select-quote] host half does not export apply().\n` +
+      `  got: ${typeof hostModule.apply}`,
+  )
+  process.exit(1)
+}
+
+writeFileSync(resolve(libDir, 'index.js'), hostCode)
+rmSync(hostBuildDir, { recursive: true, force: true })
+console.log(`[dsh-select-quote] wrote ${resolve(libDir, 'index.js')}`)
