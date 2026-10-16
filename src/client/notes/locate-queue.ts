@@ -133,15 +133,27 @@ export function requestNoteLocate(note: Note): void {
     notifyRequest()
     if (outcome.status === 'located') {
       if (!outcome.messageFound) {
-        showNotesToast('已按文本内容定位到大致位置（原消息可能已被改动）。')
+        // 明确标注这是降级结果，且给出可操作动作 —— 不能让用户以为跳对了。
+        showNotesToast(
+          outcome.degradedAfterHistory
+            ? '已尝试加载更早历史仍未出现原消息，这里只是按文本找到的相近位置，可能不是那句原文。'
+            : '已按文本内容定位到大致位置（原消息可能已被改动）。',
+        )
       }
       return
     }
-    if (outcome.status === 'timeout') {
-      showNotesToast('无法定位：这条笔记所属的消息还没有出现在当前会话里。')
+    if (outcome.status === 'exhausted') {
+      // 真实失败：说明差在哪、下一步该做什么，而不是笼统的「无法定位」。
+      // 尚未真正翻过历史时不能说「已尝试加载更早历史」—— 那是假话，且会把用户的
+      // 注意力引到「翻页」这个当前平台根本做不到的动作上。
+      showNotesToast(
+        outcome.historyAttempted
+          ? '已尝试加载更早历史仍未出现这条笔记的原消息，请先手动向上翻页到那句话附近，再点一次。'
+          : '无法定位：这条笔记所属的消息还没有出现在当前会话里（当前版本拿不到「加载更早历史」的能力）。',
+      )
       return
     }
-    showNotesToast('无法定位：当前会话里找不到这段文本。')
+    showNotesToast('无法定位：当前会话正文里找不到这段文本。')
   })
 }
 
